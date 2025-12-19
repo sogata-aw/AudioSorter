@@ -138,7 +138,7 @@ class Fenetre(QWidget):
             dialog.exec_()
         else:
             self.set_status("Terminé sans erreur", "done")
-            self.file_list.view.clear()
+            self.file_list.clear()
             self.files.clear()
             self.update_views_visibility()
 
