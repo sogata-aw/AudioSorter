@@ -13,4 +13,4 @@ apparaitront vos fichiers)
 3. Cliquer sur trier par artiste ou par album
 
 Si vous triez par artistes, vous pouvez choisir d'avoir uniquement le nom du premier artiste 
-ou de prendre tout les noms d'artistes (d'autres paramètres sont à venir)
+ou de prendre tous les noms d'artistes (d'autres paramètres sont à venir)
