@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QLabel, QSizePolicy
 
 class Status(QLabel):
     def __init__(self, parent=None):
-        super().__init__(text="Statut : en attente" , parent=parent)
+        super().__init__(text="Statut : en attente", parent=parent)
         self.setAlignment(Qt.AlignVCenter | Qt.AlignRight)
         self.setStyleSheet("""
                     QLabel {

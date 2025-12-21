@@ -30,20 +30,22 @@ def get_main_artist(artist: str) -> str:
 
     return original
 
+
 def valid_filename(filename: str) -> str:
     return "".join(c for c in filename if c.isalnum() or c.isspace() or c == ".").removesuffix(" ")
 
-def trie(directory: str, file:TinyTag, filter:str, errors: list[str]):
+
+def trie(directory: str, file: TinyTag, sorter: str, errors: list[str]):
     try:
-        if not os.path.exists(directory + "/" + valid_filename(filter)):
-            os.mkdir(directory + "/" + valid_filename(filter))
-        if not os.path.exists(directory + "/" + valid_filename(filter) + "/" + file.filename):
-            shutil.move(file.filename, directory + "/" + valid_filename(filter) + "/")
+        if not os.path.exists(directory + "/" + valid_filename(sorter)):
+            os.mkdir(directory + "/" + valid_filename(sorter))
+        if not os.path.exists(directory + "/" + valid_filename(sorter) + "/" + file.filename):
+            shutil.move(file.filename, directory + "/" + valid_filename(sorter) + "/")
         else:
             errors.append(
                 f"Il existe déjà un fichier du même nom dans le dossier de destination pour {file.filename}")
     except FileNotFoundError:
-        if not os.path.exists(directory + "/" + valid_filename(filter) + "/" + file.filename):
+        if not os.path.exists(directory + "/" + valid_filename(sorter) + "/" + file.filename):
             errors.append(f"Le fichier suivant n'existe pas : {file.filename}")
     except shutil.Error:
         errors.append(

@@ -14,15 +14,17 @@ from widgets.status import Status
 class Fenetre(QWidget):
     def __init__(self):
         super().__init__()
-
+        # --- Récupération des paramètres ---
         self.q_settings = QSettings("Soga", "AudioSorter")
         self.settings = self.q_settings.value("Solo", 0, type=int)
+
+        # --- Initialisation des variables ---
         self.files: list[TinyTag] = []
         self.directory = ""
 
         self.resize(720, 480)
         self.setAcceptDrops(True)
-        self.setWindowTitle("Trie d'audio")
+        self.setWindowTitle("AudioSorter")
 
         # --- Sélecteur de dossier ---
         self.directory_label = QLabel("Aucun dossier sélectionné")
@@ -103,7 +105,7 @@ class Fenetre(QWidget):
                                                           QFileDialog.ShowDirsOnly)
         if self.directory:
             self.directory_label.setText(self.directory)
-            self.update_launch_button_state()
+            self.update_launch_buttons_state()
             self.q_settings.setValue("last_directory", self.directory + "/..")
             return
         self.directory_label.setText("Aucun dossier sélectionné")
@@ -115,7 +117,7 @@ class Fenetre(QWidget):
                 self.files.append(tags)
                 item = QTreeWidgetItem([tags.title, tags.artist, tags.album, tags.filename])
                 self.file_list.addTopLevelItem(item)
-        self.update_launch_button_state()
+        self.update_launch_buttons_state()
         self.update_views_visibility()
 
     def trier_par_artiste(self):
@@ -154,14 +156,14 @@ class Fenetre(QWidget):
             self.files.clear()
             self.update_views_visibility()
 
-    def update_launch_button_state(self):
+    def update_launch_buttons_state(self):
         state = bool(self.files) and self.directory != ""
         self.launch_button_artist.setEnabled(state)
         self.launch_button_album.setEnabled(state)
 
     def update_views_visibility(self):
         has_files = bool(self.files)
-        self.update_launch_button_state()
+        self.update_launch_buttons_state()
         self.drop_label.setVisible(not has_files)
         self.file_list.view.setVisible(has_files)
 

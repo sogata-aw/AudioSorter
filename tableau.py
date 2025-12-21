@@ -6,6 +6,7 @@ from tinytag import TinyTag
 
 class DropLabel(QLabel):
     fileDropped = pyqtSignal(str)
+
     def __init__(self, text="Dépose des fichiers ici", parent=None):
         super().__init__(parent=parent)
         self.setAcceptDrops(True)
@@ -28,8 +29,10 @@ class DropLabel(QLabel):
             if url.isLocalFile() and url.toLocalFile().lower().endswith((".mp3", ".flac", ".wav")):
                 self.fileDropped.emit(url.toLocalFile())
 
+
 class Tableau(QTreeWidget):
     fileDropped = pyqtSignal(str)
+
     def __init__(self, files: list[TinyTag], parent=None):
         super().__init__(parent=parent)
         self.on_change = None
@@ -70,7 +73,6 @@ class Tableau(QTreeWidget):
         }
         """)
 
-
         btn_remove = QPushButton("Supprimer")
         btn_remove.clicked.connect(self.remove_items)
 
@@ -95,7 +97,8 @@ class Tableau(QTreeWidget):
         if not selected_items:
             return
         for i in range(len(selected_items)):
-            items_to_remove.append(next((j for j, x in enumerate(self.files) if x.filename == selected_items[i].text(3)), None))
+            items_to_remove.append(
+                next((j for j, x in enumerate(self.files) if x.filename == selected_items[i].text(3)), None))
             self.takeTopLevelItem(self.indexOfTopLevelItem(selected_items[i]))
         for i in reversed(items_to_remove):
             self.files.pop(i)
@@ -121,5 +124,3 @@ class Tableau(QTreeWidget):
         for url in event.mimeData().urls():
             if url.isLocalFile() and url.toLocalFile().lower().endswith((".mp3", ".flac", ".wav")):
                 self.fileDropped.emit(url.toLocalFile())
-
-
