@@ -124,14 +124,14 @@ class Fenetre(QWidget):
         self.status_label.set_status("En cours de traitement", "working")
         errors = []
         for file in self.files:
-            trie(self.directory, file, file.artist, errors)
+            trie(self.directory, file, file.artist or "Unknown", errors)
         self.handle_errors(errors)
 
     def trier_par_album(self):
         self.status_label.set_status("En cours de traitement", "working")
         errors = []
         for file in self.files:
-            trie(self.directory, file, file.album, errors)
+            trie(self.directory, file, file.album or "Unknown", errors)
         self.handle_errors(errors)
 
     def handle_errors(self, errors):
