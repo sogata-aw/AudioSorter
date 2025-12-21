@@ -26,4 +26,4 @@ def get_main_artist(artist: str) -> str:
     return original
 
 def valid_filename(filename: str) -> str:
-    return "".join(c for c in filename if c.isalnum() or c.isspace()).removesuffix(" ")
+    return "".join(c for c in filename if c.isalnum() or c.isspace() or c == ".").removesuffix(" ")
