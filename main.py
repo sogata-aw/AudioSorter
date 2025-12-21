@@ -1,22 +1,23 @@
 import os
 import shutil
 import sys
+import re
 
 from PyQt5.QtCore import Qt, QSettings
 from PyQt5.QtWidgets import QApplication, QWidget, QFileDialog, QPushButton, QVBoxLayout, QLabel, QHBoxLayout, \
-    QSizePolicy, QSplitter, QTreeWidgetItem
+    QSizePolicy, QTreeWidgetItem, QComboBox
 from tinytag import TinyTag
 
 from errors import ErrorDialog
 from tableau import DropLabel, Tableau
-
+from utilities import *
 
 class Fenetre(QWidget):
     def __init__(self):
         super().__init__()
 
         self.settings = QSettings("Soga", "AudioSorter")
-
+        self.solo = self.settings.value("Solo",  0,type=int)
         self.files: list[TinyTag] = []
         self.directory = ""
 
@@ -32,14 +33,31 @@ class Fenetre(QWidget):
             QSizePolicy.Fixed
         )
 
-        self.launch_button: QPushButton = QPushButton("Trier par artiste")
-        self.launch_button.clicked.connect(self.launch_trie_artiste)
-        self.launch_button.setEnabled(False)
-        self.launch_button.setSizePolicy(
+        self.launch_button_artist: QPushButton = QPushButton("Trier par artiste")
+        self.launch_button_artist.clicked.connect(self.launch_trie_artiste)
+        self.launch_button_artist.setEnabled(False)
+        self.launch_button_artist.setSizePolicy(
             QSizePolicy.Expanding,
             QSizePolicy.Fixed
         )
 
+        self.launch_button_album: QPushButton = QPushButton("Trier par album")
+        self.launch_button_album.clicked.connect(self.launch_trie_album)
+        self.launch_button_album.setEnabled(False)
+        self.launch_button_album.setSizePolicy(
+            QSizePolicy.Expanding,
+            QSizePolicy.Fixed
+        )
+
+        # Options de tri
+        self.options = QComboBox()
+        self.options.addItem("Tout les artistes")
+        self.options.addItem("Le premier artiste")
+        if self.solo:
+            self.options.setCurrentIndex(self.solo)
+        self.options.currentIndexChanged.connect(self.option_changed)
+
+        # Status
         self.status_label = QLabel("Statut : en attente")
         self.status_label.setAlignment(Qt.AlignVCenter | Qt.AlignRight)
         self.status_label.setStyleSheet("""
@@ -54,7 +72,8 @@ class Fenetre(QWidget):
         )
 
         self.footer_layout = QHBoxLayout()
-        self.footer_layout.addWidget(self.launch_button)
+        self.footer_layout.addWidget(self.launch_button_artist)
+        self.footer_layout.addWidget(self.launch_button_album)
         self.footer_layout.addWidget(self.status_label)
 
         # --- Widgets ---
@@ -76,6 +95,8 @@ class Fenetre(QWidget):
         folder_layout = QHBoxLayout()
         folder_layout.addWidget(self.directory_label)
         folder_layout.addWidget(directory_button)
+        folder_layout.addWidget(QLabel("Options de trie par artiste : "))
+        folder_layout.addWidget(self.options)
 
         self.main_layout = QVBoxLayout(self)
         self.main_layout.addLayout(folder_layout)
@@ -84,7 +105,9 @@ class Fenetre(QWidget):
         self.main_layout.addLayout(self.footer_layout)
 
     def open_folder_dialog(self):
-        self.directory = QFileDialog.getExistingDirectory(self, "Sélectionner un dossier", self.settings.value("last_directory", "", type=str), QFileDialog.ShowDirsOnly)
+        self.directory = QFileDialog.getExistingDirectory(self, "Sélectionner un dossier",
+                                                          self.settings.value("last_directory", "", type=str),
+                                                          QFileDialog.ShowDirsOnly)
         if self.directory:
             self.directory_label.setText(self.directory)
             self.update_launch_button_state()
@@ -106,18 +129,67 @@ class Fenetre(QWidget):
         self.set_status("En cours de traitement", "working")
         errors = []
         for file in self.files:
+            artist = file.artist
+            if self.solo == 1:
+                print("I'm getting here")
+                artist = get_main_artist(artist)
             try:
-                if not os.path.exists(self.directory + "/" + self.valid_filename(file.artist)):
-                    os.mkdir(self.directory + "/" + self.valid_filename(file.artist))
-                if not os.path.exists(self.directory + "/" + self.valid_filename(file.artist) + "/" + file.filename):
-                    shutil.move(file.filename, self.directory + "/" + self.valid_filename(file.artist) + "/")
+                if not os.path.exists(self.directory + "/" + valid_filename(artist)):
+                    os.mkdir(self.directory + "/" + valid_filename(artist))
+                if not os.path.exists(self.directory + "/" + valid_filename(artist) + "/" + file.filename):
+                    shutil.move(file.filename, self.directory + "/" + valid_filename(artist) + "/")
                 else:
-                    errors.append(f"Il existe déjà un fichier du même nom dans le dossier de destination pour {file.filename}")
+                    errors.append(
+                        f"Il existe déjà un fichier du même nom dans le dossier de destination pour {file.filename}")
             except FileNotFoundError:
-                if not os.path.exists(self.directory + "/" + self.valid_filename(file.artist) + "/" + file.filename):
+                if not os.path.exists(self.directory + "/" + valid_filename(artist) + "/" + file.filename):
                     errors.append(f"Le fichier suivant n'existe pas : {file.filename}")
             except shutil.Error:
-                errors.append(f"Il existe déjà un fichier du même nom dans le dossier de destination pour {file.filename}")
+                errors.append(
+                    f"Il existe déjà un fichier du même nom dans le dossier de destination pour {file.filename}")
+            except PermissionError:
+                errors.append(f"Permission non accordé ! Impossible de déplacer le fichier {file.filename}")
+
+        if errors:
+            self.set_status(f"Terminé avec {len(errors)} erreurs", "errors")
+            item_to_remove = [i for i, f in enumerate(self.files) if not any(f.filename in error for error in errors)]
+
+            for j in reversed(item_to_remove):
+                self.files.pop(j)
+
+            self.file_list.clear()
+
+            for file in self.files:
+                item = QTreeWidgetItem([file.title, file.artist, file.album, file.filename])
+                self.file_list.addTopLevelItem(item)
+
+            dialog = ErrorDialog(errors=errors, parent=self)
+            dialog.exec_()
+        else:
+            self.set_status("Terminé sans erreur", "done")
+            self.file_list.clear()
+            self.files.clear()
+            self.update_views_visibility()
+
+    def launch_trie_album(self):
+        self.set_status("En cours de traitement", "working")
+        errors = []
+        for file in self.files:
+            album = file.album
+            try:
+                if not os.path.exists(self.directory + "/" + valid_filename(album)):
+                    os.mkdir(self.directory + "/" + valid_filename(album))
+                if not os.path.exists(self.directory + "/" + valid_filename(album) + "/" + file.filename):
+                    shutil.move(file.filename, self.directory + "/" + valid_filename(album) + "/")
+                else:
+                    errors.append(
+                        f"Il existe déjà un fichier du même nom dans le dossier de destination pour {file.filename}")
+            except FileNotFoundError:
+                if not os.path.exists(self.directory + "/" + valid_filename(album) + "/" + file.filename):
+                    errors.append(f"Le fichier suivant n'existe pas : {file.filename}")
+            except shutil.Error:
+                errors.append(
+                    f"Il existe déjà un fichier du même nom dans le dossier de destination pour {file.filename}")
             except PermissionError:
                 errors.append(f"Permission non accordé ! Impossible de déplacer le fichier {file.filename}")
 
@@ -143,7 +215,9 @@ class Fenetre(QWidget):
             self.update_views_visibility()
 
     def update_launch_button_state(self):
-        self.launch_button.setEnabled(bool(self.files) and self.directory != "")
+        state = bool(self.files) and self.directory != ""
+        self.launch_button_artist.setEnabled(state)
+        self.launch_button_album.setEnabled(state)
 
     def update_views_visibility(self):
         has_files = bool(self.files)
@@ -168,8 +242,10 @@ class Fenetre(QWidget):
             }}
         """)
 
-    def valid_filename(self, filename: str) -> str:
-        return "".join(c for c in filename if c.isalnum() or c.isspace())
+    def option_changed(self, index):
+        self.settings.setValue("Solo", index)
+        self.solo = index
+
 
 
 if __name__ == '__main__':
